@@ -1,5 +1,4 @@
 import pg from "pg";
-import bcrypt from "bcryptjs";
 
 const { Pool } = pg;
 
@@ -28,8 +27,8 @@ export const handler = async (event) => {
     const client = await pool.connect();
 
     const result = await client.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
+      "SELECT * FROM users WHERE email=$1 AND password=$2",
+      [email, password]
     );
 
     client.release();
@@ -37,20 +36,11 @@ export const handler = async (event) => {
     if (result.rows.length === 0) {
       return {
         statusCode: 401,
-        body: JSON.stringify({ error: "User not found" })
+        body: JSON.stringify({ error: "Invalid email or password" })
       };
     }
 
     const user = result.rows[0];
-
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: "Invalid password" })
-      };
-    }
 
     return {
       statusCode: 200,
@@ -58,8 +48,8 @@ export const handler = async (event) => {
         success: true,
         user: {
           id: user.id,
-          email: user.email,
-          name: user.name
+          name: user.name,
+          email: user.email
         }
       })
     };
