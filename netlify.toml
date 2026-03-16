@@ -1,19 +1,12 @@
 [build]
-command = "npm run build"
-publish = "dist"
+  command = "npm run build"
+  publish = "dist"
 
 [functions]
-directory = "netlify/functions"
-
-[build.environment]
-NODE_ENV = "production"
-
-[dev]
-functions = "netlify/functions"
-command = "npm run dev"
+  directory = "netlify/functions"
 
 [[redirects]]
-from = "/api/test"
-to = "/.netlify/functions/api-test"
-status = 200
-force = true
+  from = "/api/test"
+  to = "/.netlify/functions/api-test"
+  status = 200
+  force = true
