@@ -11,18 +11,27 @@ export const handler = async (event) => {
     ssl: { rejectUnauthorized: false }
   });
 
+  let data = {};
+
   try {
+    data = event.body ? JSON.parse(event.body) : {};
+  } catch (e) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Invalid JSON body" })
+    };
+  }
 
-    const data = JSON.parse(event.body);
+  const { email, password } = data;
 
-    const { email, password } = data;
+  if (!email || !password) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Email and password required" })
+    };
+  }
 
-    if (!email || !password) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Email and password required" })
-      };
-    }
+  try {
 
     const client = await pool.connect();
 
@@ -64,4 +73,5 @@ export const handler = async (event) => {
   } finally {
     await pool.end();
   }
+
 };
