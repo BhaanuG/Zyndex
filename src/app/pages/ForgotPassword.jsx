@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Mail, Lock, User, ArrowRight, Menu, X, Eye, EyeOff, KeyRound, CheckCircle2, Loader2 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import authService from '@/services/api/authService';
 
 const EMAILJS_PUBLIC_KEY = 'uZuzCMh8qe38fb3SX';
 const EMAILJS_SERVICE_ID = 'service_d8xn9d3';
@@ -108,36 +109,41 @@ export default function ForgotPassword() {
     setError('');
 
     try {
-      // Prepare template parameters - matching EmailJS template variable names
-      const templateParams = {
-        from_name: fullName,
-        to_name: fullName,
-        user_name: fullName,
-        from_email: email,
-        to_email: email,
-        reply_to: email,
-        user_email: email,
-        email: email, // Adding multiple formats to ensure compatibility
-        user_type: userType.toUpperCase(), // Add user type
-        account_type: userType.toUpperCase(), // Alternative field name
-        previous_password: previousPassword || 'Not provided',
-        new_password: '***hidden***', // Don't send actual password in email
-        message: `Password reset request from ${fullName} (${userType.toUpperCase()} account). Previous password: ${previousPassword || 'Not provided'}`
-      };
-
       // Show loader with personalized message
       setLoaderMessage(`Thank you, ${fullName}! Your ${userType} account password reset request has been submitted. We're processing your request and will send instructions to ${email} shortly.`);
       setShowLoader(true);
 
-      // Send email using EmailJS
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        templateParams,
-        EMAILJS_PUBLIC_KEY
-      );
+      const requestPayload = {
+        email,
+        fullName,
+        role: userType,
+        previousPassword,
+        newPassword,
+      };
 
-      console.log('Password reset email sent successfully');
+      await Promise.all([
+        authService.requestPasswordReset(requestPayload),
+        emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            from_name: fullName,
+            to_name: fullName,
+            user_name: fullName,
+            from_email: email,
+            to_email: email,
+            reply_to: email,
+            user_email: email,
+            email,
+            user_type: userType.toUpperCase(),
+            account_type: userType.toUpperCase(),
+            previous_password: previousPassword || 'Not provided',
+            new_password: '***hidden***',
+            message: `Password reset request from ${fullName} (${userType.toUpperCase()} account). Previous password: ${previousPassword || 'Not provided'}`,
+          },
+          EMAILJS_PUBLIC_KEY
+        ),
+      ]);
 
       // Keep loader visible for 15 seconds, then redirect
       setTimeout(() => {
@@ -157,8 +163,8 @@ export default function ForgotPassword() {
       }, 15000); // 15 seconds as requested
 
     } catch (err) {
-      console.error('Email send failed:', err);
-      setError(err.text || 'Failed to send reset request. Please try again.');
+      console.error('Password reset request failed:', err);
+      setError(err.message || 'Failed to send reset request. Please try again.');
       setIsSubmitting(false);
       setShowLoader(false);
     }

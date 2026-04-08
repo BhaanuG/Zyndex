@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { TransitionLoader } from '@/app/components/PageTransitionWrapper';
+import authService from '@/services/api/authService';
+import userService from '@/services/api/userService';
 
 const AuthContext = createContext();
 
@@ -13,72 +15,106 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  // Initialize from localStorage if available
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('zyndex_user');
+    const savedUser = localStorage.getItem('user_data');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  
   const [role, setRole] = useState(() => {
-    const savedRole = localStorage.getItem('zyndex_role');
-    return savedRole || null;
+    const savedUser = localStorage.getItem('user_data');
+    return savedUser ? JSON.parse(savedUser)?.role || null : null;
   });
-
+  const [authReady, setAuthReady] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Persist to localStorage whenever user or role changes
   useEffect(() => {
     if (user) {
-      localStorage.setItem('zyndex_user', JSON.stringify(user));
+      localStorage.setItem('user_data', JSON.stringify(user));
     } else {
-      localStorage.removeItem('zyndex_user');
+      localStorage.removeItem('user_data');
     }
   }, [user]);
 
   useEffect(() => {
-    if (role) {
-      localStorage.setItem('zyndex_role', role);
-    } else {
-      localStorage.removeItem('zyndex_role');
-    }
-  }, [role]);
+    if (user?.role) setRole(user.role);
+  }, [user]);
 
-  const login = (email, password, selectedRole) => {
-    // Mock login - in real app would validate against backend
-    // Extract name from email for demo purposes
-    const name = email.split('@')[0];
-    const userData = { name, email };
-    setUser(userData);
-    setRole(selectedRole);
-    return userData; // Return user data immediately
+  useEffect(() => {
+    async function hydrateUser() {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setAuthReady(true);
+        return;
+      }
+
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+        setRole(currentUser.role);
+      } catch {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        setUser(null);
+        setRole(null);
+      } finally {
+        setAuthReady(true);
+      }
+    }
+
+    hydrateUser();
+  }, []);
+
+  const login = async (email, password, selectedRole) => {
+    const response = await authService.login({ email, password, role: selectedRole });
+    setUser(response.user);
+    setRole(response.user.role);
+    return response.user;
   };
 
   const logout = () => {
     setIsLoggingOut(true);
-    // Wait for 10 seconds before actually logging out
-    setTimeout(() => {
-      setUser(null);
-      setRole(null);
-      localStorage.removeItem('zyndex_user');
-      localStorage.removeItem('zyndex_role');
-      setIsLoggingOut(false);
-      // Redirect to login page
-      window.location.href = '/Zyndex/User/Log-In';
+    setTimeout(async () => {
+      try {
+        await authService.logout();
+      } catch {
+        // Frontend state should still clear on logout even if the request fails.
+      } finally {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        setUser(null);
+        setRole(null);
+        setIsLoggingOut(false);
+        window.location.href = '/Zyndex/User/Log-In';
+      }
     }, 10000);
   };
 
-  const register = (name, email, password, selectedRole) => {
-    // Mock registration
-    const userData = { name, email };
-    setUser(userData);
-    setRole(selectedRole);
-    return userData; // Return user data immediately
+  const register = async (name, email, password, selectedRole) => {
+    const response = await authService.register({
+      name,
+      email,
+      password,
+      role: selectedRole,
+    });
+    if (response.token && response.user) {
+      setUser(response.user);
+      setRole(response.user.role);
+      return response.user;
+    }
+
+    return response.user;
   };
 
-  const updateProfile = (updatedData) => {
-    // Update user profile data
-    const updatedUser = { ...user, ...updatedData };
+  const updateProfile = async (updatedData) => {
+    const response = await userService.updateProfile(updatedData);
+    const updatedUser = {
+      ...response,
+      role: response.role || role,
+    };
     setUser(updatedUser);
+    setRole(updatedUser.role);
+    if (response.token) {
+      localStorage.setItem('auth_token', response.token);
+    }
     return updatedUser;
   };
 
@@ -101,7 +137,9 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isAdmin: role === 'admin',
     isUser: role === 'user',
+    isPrimaryAdmin: !!user?.isPrimaryAdmin,
     isLoggingOut,
+    authReady,
     getUrlSafeName,
     getUrlSafeEmail,
   };

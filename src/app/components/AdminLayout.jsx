@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { BookOpen, LayoutDashboard, Upload, FolderOpen, Users, MessageSquare, LogOut, Menu, X, UserCircle, ArrowLeft, Home } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FolderOpen, Users, MessageSquare, LogOut, Menu, X, UserCircle, ArrowLeft, Home } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/app/components/ui/resizable';
 
@@ -32,7 +32,6 @@ export default function AdminLayout({ children }) {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: `${baseUrl}/Dashboard` },
-    { icon: Upload, label: 'Upload Resource', path: `${baseUrl}/Upload-Resource` },
     { icon: FolderOpen, label: 'Resource Management', path: `${baseUrl}/Resource-Management` },
     { icon: Users, label: 'User Access', path: `${baseUrl}/User-Access` },
     { icon: MessageSquare, label: 'Feedback Review', path: `${baseUrl}/Feedback-Review` },

@@ -9,6 +9,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import AdminRequest from './pages/AdminRequest';
 import UserAuthenticator from './pages/UserAuthenticator';
 import AdminAuthenticator from './pages/AdminAuthenticator';
+import MailOtpVerification from './pages/MailOtpVerification';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Browse from './pages/Browse';
@@ -81,6 +82,14 @@ export const router = createBrowserRouter([
       {
         path: "Zyndex/Admin/authenticator-page",
         element: <PageTransitionWrapper duration={5000}><AdminAuthenticator /></PageTransitionWrapper>
+      },
+      {
+        path: "Zyndex/User/Mail-OTP-Verification",
+        element: <PageTransitionWrapper duration={5000}><MailOtpVerification /></PageTransitionWrapper>
+      },
+      {
+        path: "Zyndex/Admin/Mail-OTP-Verification",
+        element: <PageTransitionWrapper duration={5000}><MailOtpVerification /></PageTransitionWrapper>
       },
       {
         path: "Zyndex/About/About-Us",

@@ -27,12 +27,6 @@ const userService = {
   updateProfile: async (profileData) => {
     try {
       const response = await apiClient.put('/users/profile', profileData);
-      
-      // Update local storage
-      const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-      const updatedUser = { ...userData, ...response };
-      localStorage.setItem('user_data', JSON.stringify(updatedUser));
-      
       return response;
     } catch (error) {
       throw error;
@@ -81,6 +75,16 @@ const userService = {
     try {
       const queryParams = new URLSearchParams(params).toString();
       const response = await apiClient.get(`/users/favorites?${queryParams}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getRecentViews: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params).toString();
+      const response = await apiClient.get(`/users/recent-views?${queryParams}`);
       return response;
     } catch (error) {
       throw error;
@@ -168,6 +172,24 @@ const userService = {
   deleteUser: async (userId) => {
     try {
       const response = await apiClient.delete(`/users/${userId}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createUser: async (userData) => {
+    try {
+      const response = await apiClient.post('/users', userData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateUser: async (userId, userData) => {
+    try {
+      const response = await apiClient.put(`/users/${userId}`, userData);
       return response;
     } catch (error) {
       throw error;

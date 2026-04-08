@@ -3,6 +3,11 @@ import { BookOpen, Mail, User, Lock, Shield, CheckCircle, Sparkles, ArrowLeft } 
 import { useNavigate, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import emailjs from '@emailjs/browser';
+import authService from '@/services/api/authService';
+
+const EMAILJS_PUBLIC_KEY = 'uZuzCMh8qe38fb3SX';
+const EMAILJS_SERVICE_ID = 'service_d8xn9d3';
+const EMAILJS_TEMPLATE_ID = 'template_yzckqoo';
 
 function SubmissionLoader({ message }) {
   return (
@@ -220,10 +225,8 @@ export default function AdminRequest() {
         throw new Error('All fields are required');
       }
 
-      // Send email using EmailJS
-      // The template must be configured to use {{to_email}} variable for the recipient
       const templateParams = {
-        to_email: 'lmno1432@gmail.com', // Recipient email
+        to_email: 'lmno1432@gmail.com',
         from_name: formData.fullName,
         from_email: formData.email,
         display_name: formData.displayName,
@@ -235,20 +238,15 @@ export default function AdminRequest() {
         message: `New admin account request from ${formData.fullName} (${formData.email})`,
       };
 
-      console.log('Sending admin request with EmailJS...', {
-        serviceId: 'service_d8xn9d3',
-        templateId: 'template_yzckqoo',
-        params: { ...templateParams, user_password: '***' }, // Don't log password
-      });
-
-      const response = await emailjs.send(
-        'service_d8xn9d3',
-        'template_yzckqoo',
-        templateParams,
-        'uZuzCMh8qe38fb3SX'
-      );
-
-      console.log('EmailJS response:', response);
+      await Promise.all([
+        authService.requestAdminAccess(formData),
+        emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          templateParams,
+          EMAILJS_PUBLIC_KEY
+        ),
+      ]);
 
       // Show loader with success message
       setLoaderMessage(`Thank you ${formData.displayName}! Your admin account request has been submitted successfully. You'll receive a confirmation at ${formData.email}.`);
@@ -269,11 +267,7 @@ export default function AdminRequest() {
       
       // Provide more specific error messages
       let errorMessage = 'Failed to send request. ';
-      if (err.status === 422) {
-        errorMessage += 'Email service configuration error. The template may need to be configured with a recipient email address. Please contact support.';
-      } else if (err.text) {
-        errorMessage += err.text;
-      } else if (err.message) {
+      if (err.message) {
         errorMessage += err.message;
       } else {
         errorMessage += 'Please check your internet connection and try again.';

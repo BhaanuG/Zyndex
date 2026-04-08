@@ -133,8 +133,14 @@ export default function Authenticator({ onSuccess, onBack }) {
     if (userInput === displayedCode) {
       // Success animation
       setSuccess(true);
-      setTimeout(() => {
-        onSuccess();
+      setTimeout(async () => {
+        try {
+          await onSuccess();
+        } catch (error) {
+          setSuccess(false);
+          setError(error?.message || 'Authentication failed. Please try again.');
+          inputRef.current?.focus();
+        }
       }, 1500);
     } else {
       // Invalid code - AUTO-GENERATE NEW CODE (CRITICAL FIX)

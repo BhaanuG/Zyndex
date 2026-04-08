@@ -1,5 +1,12 @@
 import apiClient from './apiClient';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+
+function withCacheBust(path) {
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}_ts=${Date.now()}`;
+}
+
 /**
  * Resource Service
  * Handles all resource-related API calls (CRUD operations for educational resources)
@@ -13,7 +20,7 @@ const resourceService = {
   getAllResources: async (params = {}) => {
     try {
       const queryParams = new URLSearchParams(params).toString();
-      const response = await apiClient.get(`/resources?${queryParams}`);
+      const response = await apiClient.get(withCacheBust(`/resources?${queryParams}`));
       return response;
     } catch (error) {
       throw error;
@@ -27,7 +34,7 @@ const resourceService = {
    */
   getResourceById: async (resourceId) => {
     try {
-      const response = await apiClient.get(`/resources/${resourceId}`);
+      const response = await apiClient.get(withCacheBust(`/resources/${resourceId}`));
       return response;
     } catch (error) {
       throw error;
@@ -42,7 +49,7 @@ const resourceService = {
   searchResources: async (searchParams) => {
     try {
       const queryParams = new URLSearchParams(searchParams).toString();
-      const response = await apiClient.get(`/resources/search?${queryParams}`);
+      const response = await apiClient.get(withCacheBust(`/resources/search?${queryParams}`));
       return response;
     } catch (error) {
       throw error;
@@ -58,7 +65,7 @@ const resourceService = {
   getResourcesByCategory: async (category, params = {}) => {
     try {
       const queryParams = new URLSearchParams(params).toString();
-      const response = await apiClient.get(`/resources/category/${category}?${queryParams}`);
+      const response = await apiClient.get(withCacheBust(`/resources/category/${category}?${queryParams}`));
       return response;
     } catch (error) {
       throw error;
@@ -72,11 +79,7 @@ const resourceService = {
    */
   uploadResource: async (resourceData) => {
     try {
-      const response = await apiClient.post('/resources', resourceData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.post('/resources', resourceData);
       return response;
     } catch (error) {
       throw error;
@@ -91,11 +94,7 @@ const resourceService = {
    */
   updateResource: async (resourceId, resourceData) => {
     try {
-      const response = await apiClient.put(`/resources/${resourceId}`, resourceData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.put(`/resources/${resourceId}`, resourceData);
       return response;
     } catch (error) {
       throw error;
@@ -123,10 +122,25 @@ const resourceService = {
    */
   downloadResource: async (resourceId) => {
     try {
-      const response = await apiClient.get(`/resources/${resourceId}/download`, {
-        responseType: 'blob',
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_BASE_URL}/resources/${resourceId}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      return response;
+
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!response.ok) {
+        if (contentType.includes('application/json')) {
+          throw await response.json();
+        }
+        throw new Error('Download failed.');
+      }
+
+      if (contentType.includes('application/json')) {
+        return await response.json();
+      }
+
+      return await response.blob();
     } catch (error) {
       throw error;
     }
@@ -138,7 +152,7 @@ const resourceService = {
    */
   getCategories: async () => {
     try {
-      const response = await apiClient.get('/resources/categories');
+      const response = await apiClient.get(withCacheBust('/resources/categories'));
       return response;
     } catch (error) {
       throw error;
@@ -151,7 +165,7 @@ const resourceService = {
    */
   getResourceStats: async () => {
     try {
-      const response = await apiClient.get('/resources/stats');
+      const response = await apiClient.get(withCacheBust('/resources/stats'));
       return response;
     } catch (error) {
       throw error;
@@ -165,7 +179,7 @@ const resourceService = {
    */
   getFeaturedResources: async (limit = 6) => {
     try {
-      const response = await apiClient.get(`/resources/featured?limit=${limit}`);
+      const response = await apiClient.get(withCacheBust(`/resources/featured?limit=${limit}`));
       return response;
     } catch (error) {
       throw error;

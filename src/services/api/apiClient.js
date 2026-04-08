@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// API Base URL - Update this with your actual backend URL
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -19,6 +18,12 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Let the browser set the multipart boundary for FormData uploads.
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     return config;
   },
   (error) => {
@@ -35,13 +40,23 @@ apiClient.interceptors.response.use(
     // Handle specific error cases
     if (error.response) {
       const { status, data } = error.response;
+      const requestUrl = error.config?.url || '';
+      const hasToken = !!localStorage.getItem('auth_token');
+      const isAuthFormRequest =
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/check-login') ||
+        requestUrl.includes('/auth/verify-code') ||
+        requestUrl.includes('/auth/forgot-password') ||
+        requestUrl.includes('/auth/reset-password');
       
       switch (status) {
         case 401:
-          // Unauthorized - Clear auth and redirect to login
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_data');
-          window.location.href = '/Zyndex/User/Log-In';
+          // Only force logout when an already-authenticated request expires.
+          if (hasToken && !isAuthFormRequest) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            window.location.href = '/Zyndex/User/Log-In';
+          }
           break;
         case 403:
           // Forbidden - User doesn't have permission

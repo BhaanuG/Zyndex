@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, Clock, MessageCircle, BookOpen } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import feedbackService from '@/services/api/feedbackService';
 import PublicLayout from '@/app/components/PublicLayout';
 
 const EMAILJS_PUBLIC_KEY = 'oNXugRmlSnKr0Iqzx'; // ⚠️ Replace with your actual public key
@@ -216,26 +217,21 @@ export default function Contact() {
     setSending(true);
     setError('');
 
-    // Check if EmailJS is configured
-    if (EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY_HERE') {
-      setError('EmailJS is not configured. Please add your Public Key at the top of Contact.jsx');
-      setSending(false);
-      return;
-    }
-
     try {
-      // Send email using EmailJS
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        {
-          from_name: formData.name,
-          from_email: formData.email,
-          subject: formData.subject,
-          message: formData.message,
-        },
-        EMAILJS_PUBLIC_KEY
-      );
+      await Promise.all([
+        feedbackService.submitContact(formData),
+        emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            from_name: formData.name,
+            from_email: formData.email,
+            subject: formData.subject,
+            message: formData.message,
+          },
+          EMAILJS_PUBLIC_KEY
+        ),
+      ]);
 
       // Show loader with success message
       setLoaderMessage(`Thank you, ${formData.name}! Your message about "${formData.subject}" has been sent successfully. We'll respond to ${formData.email} within 24-48 hours.`);
@@ -249,8 +245,8 @@ export default function Contact() {
         setTimeout(() => setSuccess(false), 5000);
       }, 15000); // Changed to 15 seconds
     } catch (err) {
-      console.error('Email send failed:', err);
-      setError(err.text || 'Failed to send message. Please check your EmailJS configuration and try again.');
+      console.error('Contact send failed:', err);
+      setError(err.message || 'Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
@@ -508,7 +504,6 @@ export default function Contact() {
                         key={index}
                         className="flex gap-5 group"
                         whileHover={{ x: 5 }}
-                        transition={{ duration: 0.3 }}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 + index * 0.1, duration: 0.6 }}

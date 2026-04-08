@@ -1,5 +1,17 @@
 import apiClient from './apiClient';
 
+export const validateLogin = async (credentials) => {
+  try {
+    const response = await apiClient.post('/auth/login', {
+      ...credentials,
+      preview: true,
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 /**
  * Authentication Service
  * Handles all authentication-related API calls
@@ -25,6 +37,8 @@ const authService = {
       throw error;
     }
   },
+
+  validateLogin,
 
   /**
    * User Registration

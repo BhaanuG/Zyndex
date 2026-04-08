@@ -90,7 +90,7 @@ export default function HelpCenter() {
           <li><strong>Search Bar:</strong> Quick search for any resource</li>
           <li><strong>Category Cards:</strong> Browse resources by subject</li>
           <li><strong>Featured Resources:</strong> Curated content for you</li>
-          <li><strong>Quick Stats:</strong> Your download and favorite counts</li>
+          <li><strong>Quick Stats:</strong> Your favorite counts</li>
         </ul>
         <h3>Available Categories:</h3>
         <ul>
@@ -104,7 +104,6 @@ export default function HelpCenter() {
         <ul>
           <li>Home Dashboard</li>
           <li>Search & Browse</li>
-          <li>My Downloads</li>
           <li>My Favourites</li>
           <li>My Profile</li>
         </ul>
@@ -175,9 +174,8 @@ export default function HelpCenter() {
         <h3>User Account Features:</h3>
         <ul>
           <li>Browse and search educational resources</li>
-          <li>Download materials for offline use</li>
+          <li>View and access materials online</li>
           <li>Save favorite resources</li>
-          <li>View download history</li>
           <li>Access all public pages</li>
           <li>Submit feedback through contact form</li>
         </ul>
@@ -252,7 +250,6 @@ export default function HelpCenter() {
         <ul>
           <li>Bookmark Zyndex for quick access</li>
           <li>Use landscape mode for reading resources</li>
-          <li>Download resources on WiFi to save data</li>
           <li>The admin sidebar auto-collapses on small screens</li>
         </ul>
       `,
@@ -382,7 +379,7 @@ export default function HelpCenter() {
           <li>Go to "My Profile"</li>
           <li>Click the "My Favourites" tab</li>
           <li>View all your saved resources</li>
-          <li>Click any item to view or download</li>
+          <li>Click any item to view details</li>
         </ol>
         <h3>Managing Favorites:</h3>
         <p>You can remove items from favorites anytime by clicking the heart icon again.</p>

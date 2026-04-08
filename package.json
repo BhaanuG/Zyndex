@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "dev:frontend": "vite",
+    "dev:backend": "cd spring-backend && mvnw.cmd spring-boot:run",
+    "start:backend": "cd spring-backend && mvnw.cmd spring-boot:run"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

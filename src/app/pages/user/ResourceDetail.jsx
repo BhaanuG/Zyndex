@@ -1,154 +1,232 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Download, FileText, Calendar, Tag, Star, Send } from 'lucide-react';
+import { Download, FileText, Calendar, Tag, Star, Send, User, ExternalLink, Heart } from 'lucide-react';
 import { useParams } from 'react-router';
 import UserLayout from '@/app/components/UserLayout';
+import resourceService from '@/services/api/resourceService';
+import feedbackService from '@/services/api/feedbackService';
+import userService from '@/services/api/userService';
 
 export default function ResourceDetail() {
   const { id } = useParams();
+  const [resource, setResource] = useState(null);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [feedback, setFeedback] = useState('');
+  const [message, setMessage] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+  const backendBaseUrl = apiBaseUrl.replace(/\/api$/, '');
 
-  // Placeholder data - would fetch from backend in real app
-  const resource = null;
+  useEffect(() => {
+    async function loadResource() {
+      try {
+        const [response, favoriteResponse] = await Promise.all([
+          resourceService.getResourceById(id),
+          userService.getFavorites({ size: 100 }),
+        ]);
+        setResource(response);
+        setIsFavorite((favoriteResponse.resources || []).some((item) => item.id === Number(id)));
+        await resourceService.trackResourceAccess(id);
+      } catch (error) {
+        console.error('Failed to load resource:', error);
+        setResource(null);
+      }
+    }
 
-  const handleDownload = () => {
-    // Mock download functionality
-    alert('Download started!');
+    loadResource();
+  }, [id]);
+
+  const handleDownload = async () => {
+    try {
+      const response = await resourceService.downloadResource(id);
+
+      if (response instanceof Blob) {
+        const url = window.URL.createObjectURL(response);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = resource.fileName || `resource-${id}`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        return;
+      }
+
+      if (response?.downloadUrl) {
+        window.open(response.downloadUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      setMessage('This resource does not have a downloadable file yet.');
+    } catch (error) {
+      setMessage(error.message || 'Download failed.');
+    }
   };
 
-  const handleSubmitFeedback = (e) => {
+  const handleSubmitFeedback = async (e) => {
     e.preventDefault();
-    // Mock feedback submission
-    alert('Thank you for your feedback!');
-    setRating(0);
-    setFeedback('');
+
+    try {
+      await feedbackService.rateResource(id, rating, feedback);
+
+      setMessage('Feedback submitted successfully.');
+      setRating(0);
+      setFeedback('');
+    } catch (error) {
+      setMessage(error.message || 'Failed to submit feedback.');
+    }
   };
+
+  const toggleFavorite = async () => {
+    try {
+      if (isFavorite) {
+        await userService.removeFromFavorites(id);
+        setIsFavorite(false);
+      } else {
+        await userService.addToFavorites(id);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      setMessage(error.message || 'Failed to update favourites.');
+    }
+  };
+
+  const previewUrl = resource?.fileUrl
+    ? (/^https?:\/\//i.test(resource.fileUrl) ? resource.fileUrl : `${backendBaseUrl}/${resource.fileUrl.replace(/^\/+/, '')}`)
+    : '';
+  const previewUrlWithVersion = previewUrl
+    ? `${previewUrl}${previewUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(resource?.updatedAt || resource?.createdAt || '')}`
+    : '';
+
+  const isPdfPreview = /\.pdf($|\?)/i.test(resource?.fileUrl || '') || /\.pdf($|\?)/i.test(resource?.fileName || '');
 
   return (
     <UserLayout>
       <div className="py-8 px-6">
         <div className="max-w-4xl mx-auto">
           {!resource ? (
-            <motion.div
-              className="bg-white rounded-xl shadow-md p-16 text-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="text-gray-400">
-                <FileText className="size-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">Resource not found</p>
-                <p className="text-sm">The resource you're looking for doesn't exist</p>
-              </div>
+            <motion.div className="bg-white rounded-xl shadow-md p-16 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <FileText className="size-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">Resource not found</p>
+              <p className="text-sm">The resource you're looking for doesn't exist.</p>
             </motion.div>
           ) : (
             <>
-              {/* Resource Header */}
-              <motion.div
-                className="bg-white rounded-xl shadow-md p-8 mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="flex items-start justify-between mb-6">
+              <motion.div className="bg-white rounded-xl shadow-md p-8 mb-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex items-start justify-between mb-6 gap-4">
                   <div className="flex-1">
                     <h1 className="text-3xl font-bold text-gray-900 mb-4">{resource.title}</h1>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Tag className="size-4" />
-                        <span>{resource.category}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="size-4" />
-                        <span>{resource.type}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="size-4" />
-                        <span>{resource.date}</span>
-                      </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                      <div className="flex items-center gap-2"><Tag className="size-4" /><span>{resource.category}</span></div>
+                      <div className="flex items-center gap-2"><User className="size-4" /><span>Author of Resource: {resource.author || resource.subject}</span></div>
+                      <div className="flex items-center gap-2"><FileText className="size-4" /><span>{resource.type}</span></div>
+                      <div className="flex items-center gap-2"><Calendar className="size-4" /><span>{new Date(resource.createdAt).toLocaleDateString()}</span></div>
                     </div>
                   </div>
-                  <motion.button
-                    onClick={handleDownload}
-                    className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Download className="size-5" />
-                    Download
-                  </motion.button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={toggleFavorite} className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${isFavorite ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}>
+                      <Heart className={`size-5 ${isFavorite ? 'fill-current' : ''}`} />
+                      {isFavorite ? 'Favourite' : 'Add Favourite'}
+                    </button>
+                    <button onClick={handleDownload} className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors">
+                      <Download className="size-5" />
+                      Download
+                    </button>
+                  </div>
                 </div>
 
                 <div className="prose max-w-none">
                   <h2 className="text-xl font-semibold text-gray-900 mb-3">Description</h2>
                   <p className="text-gray-700">{resource.description}</p>
+                  {resource.fileUrl?.includes('example.com') && (
+                    <p className="mt-4 text-sm text-amber-700">
+                      This is seeded demo metadata from the database. Upload a real PDF or article file from the admin panel to replace it with actual downloadable content.
+                    </p>
+                  )}
+                  {!resource.hasDownload && (
+                    <p className="mt-4 text-sm text-amber-700">
+                      This resource currently has description data only. Upload or attach a file from the admin panel to make it downloadable.
+                    </p>
+                  )}
                 </div>
               </motion.div>
 
-              {/* Feedback Section */}
-              <motion.div
-                className="bg-white rounded-xl shadow-md p-8"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
+              <motion.div className="bg-white rounded-xl shadow-md p-8 mb-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                  <h2 className="text-xl font-semibold text-gray-900">Preview Resource</h2>
+                  {previewUrl && (
+                    <a
+                      href={previewUrlWithVersion}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-orange-200 text-orange-700 rounded-lg font-medium hover:bg-orange-50 transition-colors"
+                    >
+                      <ExternalLink className="size-4" />
+                      Open Full Preview
+                    </a>
+                  )}
+                </div>
+
+                {previewUrl && isPdfPreview ? (
+                  <iframe
+                    src={previewUrlWithVersion}
+                    title={`${resource.title} preview`}
+                    className="w-full h-[720px] border border-gray-200 rounded-xl"
+                  />
+                ) : previewUrl ? (
+                  <div className="border border-gray-200 rounded-xl p-6 bg-gray-50">
+                    <p className="text-gray-700 mb-3">
+                      Preview is available in a new tab for this resource.
+                    </p>
+                    <a
+                      href={previewUrlWithVersion}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                    >
+                      <ExternalLink className="size-4" />
+                      Open Preview
+                    </a>
+                  </div>
+                ) : (
+                  <div className="border border-amber-200 rounded-xl p-6 bg-amber-50">
+                    <p className="text-amber-800">
+                      No preview file is attached yet. Upload a PDF or article file from the admin panel to preview it here.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+
+              <motion.div className="bg-white rounded-xl shadow-md p-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Leave Feedback</h2>
-                
                 <form onSubmit={handleSubmitFeedback} className="space-y-6">
-                  {/* Star Rating */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Rate this resource
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Rate this resource</label>
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <motion.button
-                          key={star}
-                          type="button"
-                          onClick={() => setRating(star)}
-                          onMouseEnter={() => setHoveredRating(star)}
-                          onMouseLeave={() => setHoveredRating(0)}
-                          className="focus:outline-none"
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <Star
-                            className={`size-8 transition-colors ${
-                              star <= (hoveredRating || rating)
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        </motion.button>
+                        <button key={star} type="button" onClick={() => setRating(star)} onMouseEnter={() => setHoveredRating(star)} onMouseLeave={() => setHoveredRating(0)} className="focus:outline-none">
+                          <Star className={`size-8 transition-colors ${star <= (hoveredRating || rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                        </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Comment */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Your feedback (optional)
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Your feedback</label>
                     <textarea
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       placeholder="Share your thoughts about this resource..."
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all resize-none"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                     />
                   </div>
 
-                  <motion.button
-                    type="submit"
-                    className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
+                  {message && <p className="text-sm text-orange-600">{message}</p>}
+
+                  <button type="submit" className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors">
                     <Send className="size-4" />
                     Submit Feedback
-                  </motion.button>
+                  </button>
                 </form>
               </motion.div>
             </>

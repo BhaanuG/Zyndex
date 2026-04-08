@@ -2,7 +2,11 @@ import { Navigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute({ children, role }) {
-  const { isAuthenticated, isAdmin, isUser } = useAuth();
+  const { authReady, isAuthenticated, isAdmin, isUser } = useAuth();
+
+  if (!authReady) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     // Redirect to login if not authenticated
