@@ -12,6 +12,7 @@ export default function UserAccessManagement() {
   const [showModal, setShowModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [users, setUsers] = useState([]);
   const [formUser, setFormUser] = useState(emptyUser);
@@ -68,6 +69,8 @@ export default function UserAccessManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       if (isEditing) {
         await userService.updateUser(formUser.id, {
@@ -122,6 +125,8 @@ export default function UserAccessManagement() {
       );
     } catch (error) {
       alert(error.message || 'Failed to save user.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -251,7 +256,9 @@ export default function UserAccessManagement() {
                   )}
                   <div className="flex items-center gap-3 pt-4">
                     <button type="button" onClick={closeModal} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700">{isEditing ? 'Update' : 'Create'}</button>
+                    <button type="submit" disabled={isSaving} className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed">
+                      {isSaving ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update' : 'Create')}
+                    </button>
                   </div>
                 </form>
               </div>
