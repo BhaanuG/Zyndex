@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router';
 import { motion } from 'motion/react';
 import { BookOpen, Mail, Lock, ArrowRight, Menu, X, Eye, EyeOff, Shield, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import authService, { validateLogin as validateLoginRequest } from '@/services/api/authService';
+import { sendAccountCreatedEmail } from '@/services/email/accountEmail';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -71,19 +72,35 @@ export default function Login() {
 
     try {
       if (isSignUpMode) {
-        const response = await authService.register({
-          name: name.trim(),
-          email: email.trim(),
+        const trimmedName = name.trim();
+        const trimmedEmail = email.trim();
+
+        await authService.register({
+          name: trimmedName,
+          email: trimmedEmail,
           password,
           role: 'user',
         });
 
-        const emailSent = response.confirmationEmailSent !== false;
-        const confirmationMailError = response.confirmationEmailError || '';
+        let emailSent = true;
+        let confirmationMailError = '';
+
+        try {
+          await sendAccountCreatedEmail({
+            name: trimmedName,
+            email: trimmedEmail,
+            role: 'user',
+            createdByAdmin: false,
+          });
+        } catch (mailError) {
+          emailSent = false;
+          confirmationMailError = mailError?.text || mailError?.message || 'Confirmation email could not be sent.';
+          console.error('Signup confirmation email failed:', mailError);
+        }
 
         setSuccessMessage(
           emailSent
-            ? (response.message || 'Your account has been created successfully.')
+            ? 'Your account has been created successfully. A confirmation email has been sent to your registered address.'
             : `Your account has been created successfully, but the confirmation email could not be sent. ${confirmationMailError}`
         );
         setName('');
@@ -94,7 +111,7 @@ export default function Login() {
             replace: true,
             state: {
               signupSuccess: emailSent
-                ? 'Your account has been created successfully. Please sign in.'
+                ? 'Your account has been created successfully. Please check your email and sign in.'
                 : 'Your account has been created successfully, but the confirmation email could not be sent.',
             },
           });
@@ -296,3 +313,6 @@ export default function Login() {
     </div>
   );
 }
+
+
+

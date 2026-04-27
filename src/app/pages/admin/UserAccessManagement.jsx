@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Edit, Trash2, X, User, Mail, Lock, Hash, KeyRound, Eye, EyeOff } from 'lucide-react';
 import AdminLayout from '@/app/components/AdminLayout';
 import userService from '@/services/api/userService';
+import { sendAccountCreatedEmail } from '@/services/email/accountEmail';
 
 const emptyUser = { id: null, name: '', email: '', password: '', registrationNo: '', role: 'user' };
 const emptyResetState = { id: null, name: '', password: '', confirmPassword: '' };
@@ -75,17 +76,50 @@ export default function UserAccessManagement() {
           role: formUser.role,
           password: formUser.password || undefined,
         });
-      } else {
-        await userService.createUser({
-          name: formUser.name,
-          email: formUser.email,
-          password: formUser.password,
-          registrationNo: formUser.registrationNo,
-          role: formUser.role,
-        });
+
+        closeModal();
+        await loadUsers(searchTerm);
+        alert('User updated successfully.');
+        return;
       }
+
+      const createdUser = {
+        name: formUser.name.trim(),
+        email: formUser.email.trim(),
+        role: formUser.role,
+      };
+
+      await userService.createUser({
+        name: createdUser.name,
+        email: createdUser.email,
+        password: formUser.password,
+        registrationNo: formUser.registrationNo,
+        role: createdUser.role,
+      });
+
+      let confirmationEmailSent = true;
+      let confirmationEmailError = '';
+
+      try {
+        await sendAccountCreatedEmail({
+          name: createdUser.name,
+          email: createdUser.email,
+          role: createdUser.role,
+          createdByAdmin: true,
+        });
+      } catch (mailError) {
+        confirmationEmailSent = false;
+        confirmationEmailError = mailError?.text || mailError?.message || 'Confirmation email could not be sent.';
+        console.error('Admin user confirmation email failed:', mailError);
+      }
+
       closeModal();
       await loadUsers(searchTerm);
+      alert(
+        confirmationEmailSent
+          ? `User created successfully. A confirmation email has been sent to ${createdUser.email}.`
+          : `User created successfully, but the confirmation email could not be sent. ${confirmationEmailError}`
+      );
     } catch (error) {
       alert(error.message || 'Failed to save user.');
     }
@@ -284,3 +318,6 @@ export default function UserAccessManagement() {
     </AdminLayout>
   );
 }
+
+
+
