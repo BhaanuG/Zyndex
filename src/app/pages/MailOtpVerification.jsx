@@ -27,6 +27,7 @@ export default function MailOtpVerification() {
   const [otpInput, setOtpInput] = useState('');
   const [status, setStatus] = useState('Preparing your mail OTP...');
   const [error, setError] = useState('');
+  const [devOtp, setDevOtp] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState(OTP_EXPIRY_SECONDS);
   const [submitting, setSubmitting] = useState(false);
   const [sending, setSending] = useState(false);
@@ -52,6 +53,7 @@ export default function MailOtpVerification() {
     async function requestOtp() {
       setSending(true);
       setError('');
+      setDevOtp('');
 
       try {
         const requestKey = getOtpRequestKey(authData);
@@ -90,7 +92,12 @@ export default function MailOtpVerification() {
           })
         );
         setRemainingSeconds(expiresInSeconds);
-        setStatus(`A 4-digit OTP was sent to ${authData.email}. It expires in 2 minutes.`);
+        setDevOtp(response.devOtp || '');
+        setStatus(
+          response.devOtp
+            ? `Development OTP generated for ${authData.email}. It expires in 2 minutes.`
+            : `A 4-digit OTP was sent to ${authData.email}. It expires in 2 minutes.`
+        );
 
       } catch (requestError) {
         sessionStorage.removeItem(OTP_REQUEST_SESSION_KEY);
@@ -129,6 +136,7 @@ export default function MailOtpVerification() {
     setOtpInput('');
     setStatus('');
     setError('');
+    setDevOtp('');
     setSending(true);
 
     try {
@@ -158,7 +166,12 @@ export default function MailOtpVerification() {
         })
       );
       setRemainingSeconds(expiresInSeconds);
-      setStatus(`A new OTP was sent to ${authData.email}. It expires in 2 minutes.`);
+      setDevOtp(response.devOtp || '');
+      setStatus(
+        response.devOtp
+          ? `A new development OTP was generated for ${authData.email}. It expires in 2 minutes.`
+          : `A new OTP was sent to ${authData.email}. It expires in 2 minutes.`
+      );
 
     } catch (requestError) {
       sessionStorage.removeItem(OTP_REQUEST_SESSION_KEY);
@@ -231,6 +244,13 @@ export default function MailOtpVerification() {
               <div className="mb-5 flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">
                 <ShieldCheck className="size-5 mt-0.5" />
                 <span>{status}</span>
+              </div>
+            )}
+
+            {devOtp && (
+              <div className="mb-5 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
+                <KeyRound className="size-5 mt-0.5" />
+                <span>Your OTP for this deployment is <strong>{devOtp}</strong>.</span>
               </div>
             )}
 

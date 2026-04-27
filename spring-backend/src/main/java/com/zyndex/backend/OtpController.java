@@ -39,6 +39,13 @@ class OtpController {
         }
         String otp = String.valueOf(1000 + RANDOM.nextInt(9000));
         otps.put(key(email, role), new OtpRecord(otp, Instant.now().plusSeconds(OTP_TTL_SECONDS), 0));
+        if (properties.exposeOtpInDevelopment()) {
+            return Map.of(
+                    "message", "OTP generated successfully.",
+                    "expiresInSeconds", OTP_TTL_SECONDS,
+                    "emailSent", false,
+                    "devOtp", otp);
+        }
         if (properties.otpMailFrom() == null || properties.otpMailFrom().isBlank()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "OTP SMTP email is not configured. Add OTP_SMTP_USER and OTP_SMTP_PASS in backend/.env.");
         }
@@ -57,9 +64,6 @@ class OtpController {
         response.put("message", "OTP sent successfully.");
         response.put("expiresInSeconds", OTP_TTL_SECONDS);
         response.put("emailSent", true);
-        if (properties.exposeOtpInDevelopment()) {
-            response.put("devOtp", otp);
-        }
         return response;
     }
 
