@@ -10,6 +10,7 @@ public record AppProperties(
         String mainAdminPassword,
         String mainAdminName,
         String otpMailFrom,
+        String resendApiKey,
         boolean otpSmtpSecure,
         boolean exposeOtpInDevelopment,
         String uploadDir

@@ -1,5 +1,10 @@
 package com.zyndex.backend;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HashMap;
@@ -18,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 class OtpController {
     private static final long OTP_TTL_SECONDS = 120;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String RESEND_ENDPOINT = "https://api.resend.com/emails";
     private final Map<String, OtpRecord> otps = new ConcurrentHashMap<>();
     private final JavaMailSender mailSender;
     private final AppProperties properties;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     OtpController(JavaMailSender mailSender, AppProperties properties) {
         this.mailSender = mailSender;
@@ -39,15 +46,15 @@ class OtpController {
         }
         String otp = String.valueOf(1000 + RANDOM.nextInt(9000));
         otps.put(key(email, role), new OtpRecord(otp, Instant.now().plusSeconds(OTP_TTL_SECONDS), 0));
-        if (properties.exposeOtpInDevelopment()) {
-            return Map.of(
-                    "message", "OTP generated successfully.",
-                    "expiresInSeconds", OTP_TTL_SECONDS,
-                    "emailSent", false,
-                    "devOtp", otp);
-        }
         if (properties.otpMailFrom() == null || properties.otpMailFrom().isBlank()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "OTP SMTP email is not configured. Add OTP_SMTP_USER and OTP_SMTP_PASS in backend/.env.");
+        }
+        if (properties.resendApiKey() != null && !properties.resendApiKey().isBlank()) {
+            sendWithResend(email, otp);
+            return Map.of(
+                    "message", "OTP sent successfully.",
+                    "expiresInSeconds", OTP_TTL_SECONDS,
+                    "emailSent", true);
         }
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(properties.otpMailFrom());
@@ -111,6 +118,45 @@ class OtpController {
 
     private String key(String email, String role) {
         return role + ":" + email;
+    }
+
+    private void sendWithResend(String email, String otp) {
+        String payload = """
+                {
+                  "from": "%s",
+                  "to": ["%s"],
+                  "subject": "Your Zyndex login OTP",
+                  "text": "Your Zyndex login OTP is %s. This code expires in 2 minutes and can be used only once."
+                }
+                """.formatted(
+                escapeJson(properties.otpMailFrom()),
+                escapeJson(email),
+                escapeJson(otp));
+
+        HttpRequest request = HttpRequest.newBuilder(URI.create(RESEND_ENDPOINT))
+                .header("Authorization", "Bearer " + properties.resendApiKey())
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int statusCode = response.statusCode();
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "Could not send OTP email. Please check Resend configuration and try again.");
+            }
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Could not send OTP email. Please check Resend configuration and try again.");
+        } catch (IOException error) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Could not send OTP email. Please check Resend configuration and try again.");
+        }
+    }
+
+    private String escapeJson(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"");
     }
 
     static class OtpRecord {
