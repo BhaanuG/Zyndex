@@ -37,6 +37,22 @@ export default function ResourceDetail() {
     loadResource();
   }, [id]);
 
+  const triggerBrowserDownload = ({ href, filename, newTab = false }) => {
+    const link = document.createElement('a');
+    link.href = href;
+    if (filename) {
+      link.download = filename;
+    }
+    if (newTab) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    }
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => link.remove(), 0);
+  };
+
   const handleDownload = async () => {
     try {
       setMessage('');
@@ -44,24 +60,20 @@ export default function ResourceDetail() {
 
       if (response instanceof Blob) {
         const url = window.URL.createObjectURL(response);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = resource.fileName || `resource-${id}`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
+        triggerBrowserDownload({
+          href: url,
+          filename: resource.fileName || `${resource.title || `resource-${id}`}.pdf`,
+        });
+        setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
         return;
       }
 
       if (response?.downloadUrl) {
-        const link = document.createElement('a');
-        link.href = response.downloadUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        triggerBrowserDownload({
+          href: response.downloadUrl,
+          filename: resource.fileName || `${resource.title || `resource-${id}`}.pdf`,
+          newTab: /^https?:\/\//i.test(response.downloadUrl),
+        });
         return;
       }
 
@@ -136,7 +148,7 @@ export default function ResourceDetail() {
                       <Heart className={`size-5 ${isFavorite ? 'fill-current' : ''}`} />
                       {isFavorite ? 'Favourite' : 'Add Favourite'}
                     </button>
-                    <button onClick={handleDownload} className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors">
+                    <button type="button" onClick={handleDownload} className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors">
                       <Download className="size-5" />
                       Download
                     </button>
