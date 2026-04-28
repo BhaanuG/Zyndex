@@ -77,7 +77,7 @@ export default function UserHome() {
   const handleCategoryClick = (category) => {
     const userName = getUrlSafeName();
     const userEmail = getUrlSafeEmail();
-    navigate(`/Zyndex/User/${userName}/${userEmail}/Search?category=${category.toLowerCase()}`);
+    navigate(`/Zyndex/User/${userName}/${userEmail}/Search?category=${encodeURIComponent(category)}`);
   };
 
   const handleSearch = (e) => {
