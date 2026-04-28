@@ -7,6 +7,16 @@ function withCacheBust(path) {
   return `${path}${separator}_ts=${Date.now()}`;
 }
 
+function toQueryString(params = {}) {
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === 'string' && value.trim() === '') return;
+    queryParams.append(key, value);
+  });
+  return queryParams.toString();
+}
+
 /**
  * Resource Service
  * Handles all resource-related API calls (CRUD operations for educational resources)
@@ -19,7 +29,7 @@ const resourceService = {
    */
   getAllResources: async (params = {}) => {
     try {
-      const queryParams = new URLSearchParams(params).toString();
+      const queryParams = toQueryString(params);
       const response = await apiClient.get(withCacheBust(`/resources?${queryParams}`));
       return response;
     } catch (error) {
@@ -48,7 +58,7 @@ const resourceService = {
    */
   searchResources: async (searchParams) => {
     try {
-      const queryParams = new URLSearchParams(searchParams).toString();
+      const queryParams = toQueryString(searchParams);
       const response = await apiClient.get(withCacheBust(`/resources/search?${queryParams}`));
       return response;
     } catch (error) {
@@ -64,7 +74,7 @@ const resourceService = {
    */
   getResourcesByCategory: async (category, params = {}) => {
     try {
-      const queryParams = new URLSearchParams(params).toString();
+      const queryParams = toQueryString(params);
       const response = await apiClient.get(withCacheBust(`/resources/category/${category}?${queryParams}`));
       return response;
     } catch (error) {
