@@ -39,6 +39,7 @@ export default function ResourceDetail() {
 
   const handleDownload = async () => {
     try {
+      setMessage('');
       const response = await resourceService.downloadResource(id);
 
       if (response instanceof Blob) {
@@ -46,13 +47,21 @@ export default function ResourceDetail() {
         const link = document.createElement('a');
         link.href = url;
         link.download = resource.fileName || `resource-${id}`;
+        document.body.appendChild(link);
         link.click();
+        link.remove();
         window.URL.revokeObjectURL(url);
         return;
       }
 
       if (response?.downloadUrl) {
-        window.open(response.downloadUrl, '_blank', 'noopener,noreferrer');
+        const link = document.createElement('a');
+        link.href = response.downloadUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
         return;
       }
 
